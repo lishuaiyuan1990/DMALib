@@ -1,0 +1,21 @@
+CROSS_COMPLE:=arm-xilinx-linux-gnueabi-
+ARCH:=arm
+CC:=$(CROSS_COMPILE)gcc
+LD:=$(CROSS_COMPILE)ld
+
+
+obj-m := dmako.o
+module-objs := dmako.o 
+
+KVER ?= $(shell uname -r)
+#KDIR := /lib/modules/$(KVER)/build
+
+#KDIR := /root/eastcom/susz_view_server_test/SW_COMM/lib/SW_BPS/Terminal/D8135/CPU/LinuxSys/Kernel
+KDIR := ~/Zynq/ZynqTool/Kernel/linux-xlnx
+PWD := $(shell pwd)
+defaule:
+	make -C $(KDIR) M=$(PWD) modules ARCH=arm
+
+
+clean:
+	rm -f *.ko *.o *.mod.c *.symvers
