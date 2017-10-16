@@ -69,7 +69,9 @@ ssize_t demo_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 	//XAxiDma_WriteReg(VREG_BASE_ADDR, TEST_PARA_POS, para);
 	//printk("dmako...... read XAxiDma_Busy %d\n", ret);
 	if (ret == 0)
+	{
 		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
+	}
 	return ret;
 }
 
@@ -82,7 +84,6 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	unsigned int para;
 	int Status;
-	u8 *RxBufferPtr;
 	static int first_time_run = 1;
 	//printk("dmako......ioctl cmd: %0#8x arg: %0#8x \n", cmd, arg);
 	u16 data = cmd & 0x0000FFFF;
@@ -92,12 +93,24 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	u8 magic = (data & 0xFF00) >> 8; 
 	if (cmd == CONFIG_PARA_DMA)
 	{
-		printk("dmako......ioctl CONFIG_PARA_DMA : %d", arg);
+		u8 *RxBufferPtr;
+		printk("dmako......ioctl CONFIG_PARA_DMA : %d\n", arg);
 		arg == 0 ? (RxBufferPtr = (u8 *)RX_BUFFER_BASE) : (RxBufferPtr = (u8 *)RX_BUFFER_BASE_2);
 		Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBufferPtr, MAX_PKT_LEN, XAXIDMA_DEVICE_TO_DMA,VREG_BASE_ADDR);
 		if (Status != XST_SUCCESS) {
 			return XST_FAILURE;
 		}
+		/* Invalidate the DestBuffer before receiving the data, in case the
+		 * Data Cache is enabled
+		 */
+		u32 *RxPacket;
+		if(arg == 0)
+			RxPacket = (u32 *) RX_BUFFER_BASE;
+		else
+			RxPacket = (u32 *) RX_BUFFER_BASE_2;
+		//XAxiDma_WriteReg(VXPS_L2CC_BASEADDR, XPS_L2CC_CACHE_INVLD_PA_OFFSET, (u32)RxPacket);
+		//Xil_L2CacheInvalidateLine(VXPS_L2CC_BASEADDR);
+		//Xil_DCacheInvalidateRange((u32)RxPacket, MAX_PKT_LEN / 100, VXPS_L2CC_BASEADDR);
 		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 1);
 		return XST_SUCCESS;
 	}
@@ -187,6 +200,7 @@ int xil_DmaInit(u16 DeviceId)
 		return XST_FAILURE;
 	}
 	XAxiDma_IntrDisable(&AxiDma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
+	Xil_L2CacheDisable(VXPS_L2CC_BASEADDR);
 	return XST_SUCCESS;
 }
 int CheckData(void)

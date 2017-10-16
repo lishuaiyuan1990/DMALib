@@ -1,4 +1,5 @@
 #include "myDma.h"
+
 #define NUMBER_OF_TRANSFERS	10
 #define XPAR_PS7_DDR_0_S_AXI_BASEADDR 0x00100000
 #define RX_BUFFER_BASE		(XPAR_PS7_DDR_0_S_AXI_BASEADDR + 0x01000000)
@@ -7,6 +8,8 @@
 #define XPAR_AXIDMA_0_DEVICE_ID XPAR_AXI_DMA_0_DEVICE_ID
 #define DMA_DEV_ID XPAR_AXIDMA_0_DEVICE_ID
 #define TEST_START_VALUE 0xC
+
+
 XAxiDma_Config XAxiDma_ConfigTable[] =
 {
 	{
@@ -410,7 +413,7 @@ void Xil_DCacheInvalidateRange(INTPTR adr, u32 len, u32 vaddr)
 		if ((tempadr & (cacheline-1U)) != 0U) {
 			tempadr &= (~(cacheline - 1U));
 
-			Xil_L1DCacheFlushLine(tempadr);
+			//Xil_L1DCacheFlushLine(tempadr);
 			/* Disable Write-back and line fills */
 			Xil_L2WriteDebugCtrl(0x3U, vaddr);
 			Xil_L2CacheFlushLine(tempadr, vaddr);
@@ -422,7 +425,7 @@ void Xil_DCacheInvalidateRange(INTPTR adr, u32 len, u32 vaddr)
 		if ((tempend & (cacheline-1U)) != 0U) {
 			tempend &= (~(cacheline - 1U));
 
-			Xil_L1DCacheFlushLine(tempend);
+			//Xil_L1DCacheFlushLine(tempend);
 			/* Disable Write-back and line fills */
 			Xil_L2WriteDebugCtrl(0x3U, vaddr);
 			Xil_L2CacheFlushLine(tempend, vaddr);
@@ -445,6 +448,61 @@ void Xil_DCacheInvalidateRange(INTPTR adr, u32 len, u32 vaddr)
 	mtcpsr(currmask);
 }
 
+void Xil_L2CacheDisable(u32 vaddr)
+{
+    register u32 L2CCReg;
+
+
+    L2CCReg = XAxiDma_ReadReg(vaddr, XPS_L2CC_CNTRL_OFFSET);
+
+
+    if((L2CCReg & 0x1U) != 0U) {
+        /* Clean and Invalidate L2 Cache */
+        Xil_L2CacheFlush(vaddr);
+	    /* Disable the L2CC */
+	L2CCReg = Xil_In32(vaddr + XPS_L2CC_CNTRL_OFFSET);
+	    Xil_Out32(vaddr + XPS_L2CC_CNTRL_OFFSET,
+		      (L2CCReg & (~0x01U)));
+		/* Wait for the cache operations to complete */
+
+		dsb();
+    }
+}
+
+void Xil_L2CacheFlush(u32 vaddr)
+{
+	u32 ResultL2Cache;
+
+	/* Flush the caches */
+
+	/* Disable Write-back and line fills */
+	Xil_L2WriteDebugCtrl(0x3U, vaddr);
+
+	Xil_Out32(vaddr + XPS_L2CC_CACHE_INV_CLN_WAY_OFFSET,
+		  0x0000FFFFU);
+	ResultL2Cache = Xil_In32(vaddr + XPS_L2CC_CACHE_INV_CLN_WAY_OFFSET)
+							& 0x0000FFFFU;
+
+	while(ResultL2Cache != (u32)0U) {
+		ResultL2Cache = Xil_In32(vaddr + XPS_L2CC_CACHE_INV_CLN_WAY_OFFSET)
+									& 0x0000FFFFU;
+	}
+
+	Xil_L2CacheSync(vaddr);
+	/* Enable Write-back and line fills */
+	Xil_L2WriteDebugCtrl(0x0U, vaddr);
+
+	/* synchronize the processor */
+	dsb();
+}
+
+
+void Xil_L2CacheInvalidateLine(u32 adr)
+{
+	Xil_Out32(XPS_L2CC_BASEADDR + XPS_L2CC_CACHE_INVLD_PA_OFFSET, (u32)adr);
+	/* synchronize the processor */
+	dsb();
+}
 
 
 

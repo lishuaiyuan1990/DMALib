@@ -6,6 +6,7 @@
 #define XPAR_AXI_DMA_0_DEVICE_ID 0
 #define XPAR_AXI_DMA_0_BASEADDR 0x40400000//DMA Control
 //#define XPAR_AXI_DMA_0_HIGHADDR 0x4040FFFF
+#define XPS_L2CC_CNTRL_OFFSET		0x0100U
 #define XPAR_AXI_DMA_0_SG_INCLUDE_STSCNTRL_STRM 0
 #define XPAR_AXI_DMA_0_INCLUDE_MM2S_DRE 0
 #define XPAR_AXI_DMA_0_INCLUDE_S2MM_DRE 1
@@ -19,6 +20,7 @@
 #define XPAR_AXI_DMA_0_NUM_S2MM_CHANNELS 1
 #define XPAR_AXI_DMA_0_M_AXIS_MM2S_TDATA_WIDTH 64
 #define XPAR_AXI_DMA_0_S_AXIS_S2MM_TDATA_WIDTH 64
+#define XPS_L2CC_CACHE_INV_CLN_WAY_OFFSET	0x07FCU
 #define XAXIDMA_MICROMODE_MIN_BUF_ALIGN	0xFFF	/**< Minimum byte alignment*/
 #define XAXIDMA_CR_OFFSET	0x00000000   /**< Channel control */
 #define XAXIDMA_CR_RESET_MASK	0x00000004 /**< Reset DMA engine */
@@ -50,6 +52,7 @@
 #define XAXIDMA_HALTED_MASK		0x00000001  /**< DMA channel halted */
 #define XAXIDMA_DMA_TO_DEVICE		0x00
 #define XAXIDMA_DEVICE_TO_DMA		0x01
+#define XREG_CP15_CONTROL_C_BIT			0x00000004U
 
 #define XPS_L2CC_BASEADDR			0xF8F02000U
 #define XPS_L2CC_DEBUG_CTRL_OFFSET		0x0F40U		/* Debug Control Register */
@@ -59,6 +62,14 @@
 #define XPS_L2CC_CACHE_INV_CLN_PA_OFFSET	0x07F0U		/* Cache Invalidate and Clean by PA */
 #define XPS_L2CC_CACHE_SYNC_OFFSET		0x0730U		/* Cache Sync */
 #define XPS_L2CC_DUMMY_CACHE_SYNC_OFFSET 	0x0740U
+
+#if defined (__GNUC__) || defined (__ICCARM__)
+#define XREG_CP15_SYS_CONTROL			"p15, 0, %0,  c1,  c0, 0"
+#define XREG_CP15_CACHE_SIZE_ID			"p15, 1, %0,  c0,  c0, 0"
+#else
+#define XREG_CP15_CACHE_SIZE_ID			"cp15:1:c0:c0:0"
+#define XREG_CP15_SYS_CONTROL			"cp15:0:c1:c0:0"
+#endif
 
 #define CONFIG_PL310_ERRATA_588369 1
 #define CONFIG_PL310_ERRATA_727915 1
@@ -218,6 +229,13 @@ void Xil_L2CacheSync(u32 vaddr);
 void Xil_L2CacheFlushLine(u32 adr, u32 vaddr);
 void Xil_L2WriteDebugCtrl(u32 Value, u32 vaddr);
 void Xil_DCacheInvalidateRange(INTPTR adr, u32 len, u32 vaddr);
+
+void Xil_L2CacheDisable(u32 vaddr);
+void Xil_L2CacheFlush(u32 vaddr);
+
+
+void Xil_L2CacheInvalidateLine(u32 adr);
 //u32 XPAR_AXI_DMA_0_VBASEADDR;
 #endif
+
 
