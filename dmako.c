@@ -7,6 +7,7 @@
 #include <linux/fcntl.h>
 #include <linux/cdev.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/ctype.h>
@@ -229,7 +230,7 @@ int demo_init_module(void)
 {
 	int result;
 	dev_t dev = 0;
-	
+	ssleep(3);
 	dev = MKDEV(DEMO_MAJOR, DEMO_MINOR);
 	result = register_chrdev_region(dev, 1, "dma");
 	if (result < 0) {
