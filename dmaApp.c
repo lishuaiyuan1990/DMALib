@@ -22,6 +22,10 @@ int gatestart = 0;
 int gateend = 500;
 int endsign = 0xEEEE;
 volatile int mark = 1;
+
+int recvtimes = 0;
+
+
 int main()
 {
 	gdata = (unsigned int*)malloc(MAX_PKT_LEN);
@@ -198,7 +202,6 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 	}
 	if (sign == 97)
 	{
-		printf("lishuaiyuan create thread DMA\n");
 		td_para.para.fd = fd;
 		td_para.para.pdata[0] = pdata[0];
 		td_para.para.pdata[1] = pdata[1];
@@ -231,12 +234,22 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 		ioctl(fd, REG_SET_PARA, sign);
 		return;
 	}
-	else if (sign == 0X4000000)
+	else if (hi16 == 0X400)//0X4000001
 	{
-		int data[4];
-		while(read(fd, data, 10));
-		ioctl(fd, REG_SET_PARA, sign);
-		return;
+		if (lo == 0)
+		{
+			printf("stop sys ....... \n");
+			int data[4];
+			sys_start = 0;
+			while(read(fd, data, 10));
+			ioctl(fd, REG_SET_PARA, sign);
+			return;
+		}
+		else if (lo == 1)
+		{
+			sys_start = 1;
+			printf("start sys ....... \n");
+		}
 	}
 	if (hi8 == INIT_CMD)
 		ioctl(fd, CONFIG_PARA_DMA);
@@ -289,6 +302,9 @@ void *transData(void *args)
 		}
 		while (!mark&& fd_accept[index] != 0);
 	}
+
+	recvtimes += 1;
+	//printf("recvtimes %d\n", recvtimes);
 	pthread_exit(NULL);
 }
 void *startDMA(void *args)
@@ -307,7 +323,7 @@ void *startDMA(void *args)
 	int j = 0;
 	int clock = 0;
 	ioctl(fd, CONFIG_PARA_DMA, 0);//0
-	printf("config_para_DMA 1 %d\n", clock);
+	//printf("config_para_DMA 1 %d\n", clock);
 	while(read(fd, data, 10)); 
 	while (!sys_start);
 	static int first = 1;
@@ -322,27 +338,28 @@ void *startDMA(void *args)
 			break;
 		clock = (clock + 1) % 2;//1
 		ioctl(fd, CONFIG_PARA_DMA, clock);
-		printf("config_para_DMA 2 %d\n", clock);
+		//printf("config_para_DMA 2 %d\n", clock);
 		clock = (clock + 1) % 2;//0
 
 		memcpy(gdata, pdata[clock], MAX_PKT_LEN);
-		printf("config_para_DMA memcpy %d\n", clock);
+		//printf("config_para_DMA memcpy %d\n", clock);
 		if (pthread_create(&transpthread_id[1],NULL, transData, (void*)(&index)))//create 1
 		{
 			printf("Create Thread Failed\n");
 		}
 		while (sys_start && read(fd, data, 10)&& fd_accept[index] != 0); 
 		pthread_join(transpthread_id[1], NULL);//waiting 1
+		if (!sys_start)
+			break;
 		ioctl(fd, CONFIG_PARA_DMA, clock);
-		printf("config_para_DMA 2 %d\n", clock);
+		//printf("config_para_DMA 2 %d\n", clock);
 		clock = (clock + 1) % 2;//1
 		memcpy(gdata, pdata[clock], MAX_PKT_LEN);
-		printf("config_para_DMA memcpy %d\n", clock);
+		//printf("config_para_DMA memcpy %d\n", clock);
 		pthread_create(&transpthread_id[0], NULL,transData, (void*)(&index));//create 0*/
 		clock = (clock + 1) % 2;//0
 		if (fd_accept[index] == 0)
 			break;
-		printf("end\n");
 	}
 	printf("disconnected ...\n");
 	pthread_mutex_unlock(&mutex);

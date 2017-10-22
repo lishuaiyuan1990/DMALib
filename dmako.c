@@ -95,7 +95,7 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (cmd == CONFIG_PARA_DMA)
 	{
 		u8 *RxBufferPtr;
-		printk("dmako......ioctl CONFIG_PARA_DMA : %d\n", arg);
+		//printk("dmako xxxxxxxxxxxxxxxxxxxxxx ioctl CONFIG_PARA_DMA : %d\n", arg);
 		arg == 0 ? (RxBufferPtr = (u8 *)RX_BUFFER_BASE) : (RxBufferPtr = (u8 *)RX_BUFFER_BASE_2);
 		Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBufferPtr, MAX_PKT_LEN, XAXIDMA_DEVICE_TO_DMA,VREG_BASE_ADDR);
 		if (Status != XST_SUCCESS) {
