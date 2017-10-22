@@ -218,22 +218,6 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 		//transFocusLaw(sock, fd);
 		return;
 	}
-	else if (hi16 == 3)
-	{
-		if (lo == 0)
-		{
-			int data[4];
-			while(read(fd, data, 10));
-			sys_start = 0;
-			//ioctl(fd, CONFIG_PARA_DMA);
-		}
-		else if (lo == 1)
-		{
-			sys_start = 1;
-		}
-		ioctl(fd, REG_SET_PARA, sign);
-		return;
-	}
 	else if (hi16 == 0X400)//0X4000001
 	{
 		if (lo == 0)
@@ -242,14 +226,14 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 			int data[4];
 			sys_start = 0;
 			while(read(fd, data, 10));
-			ioctl(fd, REG_SET_PARA, sign);
-			return;
 		}
 		else if (lo == 1)
 		{
 			sys_start = 1;
 			printf("start sys ....... \n");
 		}
+		ioctl(fd, REG_SET_PARA, sign);
+		return;
 	}
 	if (hi8 == INIT_CMD)
 		ioctl(fd, CONFIG_PARA_DMA);
