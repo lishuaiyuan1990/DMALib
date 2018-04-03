@@ -1,0 +1,1 @@
+cmd_/home/l-64/Desktop/Zynq/xaxidma/axidma_v9_3/mydma/mydmako.o := arm-xilinx-linux-gnueabi-ld -EL    -r -o /home/l-64/Desktop/Zynq/xaxidma/axidma_v9_3/mydma/mydmako.o /home/l-64/Desktop/Zynq/xaxidma/axidma_v9_3/mydma/myDma.o /home/l-64/Desktop/Zynq/xaxidma/axidma_v9_3/mydma/dmako.o 
