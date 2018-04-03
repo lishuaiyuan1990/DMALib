@@ -18,9 +18,6 @@
 #include <linux/mm.h> 
 #include <linux/fcntl.h> 
 #include <linux/mman.h>
-
-#include <linux/time.h>  
-
 #include <linux/stat.h>
 #include "dmako.h"
 
@@ -38,11 +35,6 @@
 #define REG_BASE_PADDR 0x43C00000
 MODULE_AUTHOR("Li");
 MODULE_LICENSE("GPL");
-
-
-struct  timeval g_start;
-struct  timeval g_end;
-struct  timeval g_start_0;
 
 struct demo_dev *demo_devices;
 static unsigned char demo_inc = 0;//全局变量，每次只能打开一个设备
@@ -77,15 +69,50 @@ ssize_t demo_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 	//unsigned int para = (3 << 16) + arg;
 	//XAxiDma_WriteReg(VREG_BASE_ADDR, TEST_PARA_POS, para);
 	//printk("dmako...... read XAxiDma_Busy %d\n", ret);
+
 	if (ret == 0)
 	{
-		do_gettimeofday(&g_end);
-		unsigned long diff;
-		diff = 1000000 * (g_end.tv_sec-g_start.tv_sec)+ g_end.tv_usec-g_start.tv_usec;
-        printk("dmako not busy from configSimple time(us) %ld\n",diff);
-		// XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
+		printk("dma busy is 0 -------------------------- start\n");
+		testFunc();
+		printk("dma busy is 0 -------------------------- end\n");
+		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
+	}
+	else
+	{
+		printk("dma busy is 1 -------------------------- start\n");
+		testFunc();
+		printk("dma busy is 1 -------------------------- end\n");
 	}
 	return ret;
+}
+
+
+void testFunc(void)
+{
+	int offsetArr[6] = {0x0, 0x4, 0x30, 0x34, 0x48, 0x58};
+	int offset = offsetArr[0];
+	int ret = XAxiDma_ReadReg(VREG_BASE_ADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
+
+	offset = offsetArr[1];
+	ret = XAxiDma_ReadReg(VREG_BASE_ADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
+
+	offset = offsetArr[2];
+	ret = XAxiDma_ReadReg(XPAR_AXI_DMA_0_VBASEADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
+
+	offset = offsetArr[3];
+	ret = XAxiDma_ReadReg(XPAR_AXI_DMA_0_VBASEADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
+
+	offset = offsetArr[4];
+	ret = XAxiDma_ReadReg(XPAR_AXI_DMA_0_VBASEADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
+	
+	offset = offsetArr[5];
+	ret = XAxiDma_ReadReg(XPAR_AXI_DMA_0_VBASEADDR, offset);
+	printk("test offet: %0#x data: %0#8x\n", offset, ret);	
 }
 
 ssize_t  demo_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
@@ -105,36 +132,19 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	u8 nr_hi = (nr & 0xF0) >> 4;
 	u8 magic = (data & 0xFF00) >> 8; 
 	if (cmd == CONFIG_PARA_DMA)
-	{		
-		do_gettimeofday(&g_start_0);
+	{
 		u8 *RxBufferPtr;
-		//printk("dmako xxxxxxxxxxxxxxxxxxxxxx ioctl CONFIG_PARA_DMA : %d\n", arg);
-		if (arg == 2)
-		{
-			printk("dmako configDMA XAxiDma_Reset...");
-			XAxiDma_Reset(&AxiDma);
-			/* At the initialization time, hardware should finish reset quickly
-			 */
-			int TimeOut = 500;
-			while (TimeOut) {
-				if(XAxiDma_ResetIsDone(&AxiDma)) {
-					break;
-				}
-				TimeOut -= 1;
-			}
-			if (!TimeOut)
-				return XST_FAILURE;
-			printk("dmako configDMA XAxiDma_Reset Success...");
-			arg = 0;
-		}
+		printk("dmako xxxxxxxxxxxxxxxxxxxxxx ioctl CONFIG_PARA_DMA\n");
 		arg == 0 ? (RxBufferPtr = (u8 *)RX_BUFFER_BASE) : (RxBufferPtr = (u8 *)RX_BUFFER_BASE_2);
-		Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBufferPtr, MAX_PKT_LEN, XAXIDMA_DEVICE_TO_DMA,VREG_BASE_ADDR);
+		Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBufferPtr, MAX_PKT_LEN, XAXIDMA_DEVICE_TO_DMA);
 		if (Status != XST_SUCCESS) {
+			printk("XST_FAILURE.......\n");
 			return XST_FAILURE;
 		}
 		/* Invalidate the DestBuffer before receiving the data, in case the
 		 * Data Cache is enabled
 		 */
+		printk("XST_SUCCESS.......\n");
 		u32 *RxPacket;
 		if(arg == 0)
 			RxPacket = (u32 *) RX_BUFFER_BASE;
@@ -143,12 +153,9 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		//XAxiDma_WriteReg(VXPS_L2CC_BASEADDR, XPS_L2CC_CACHE_INVLD_PA_OFFSET, (u32)RxPacket);
 		//Xil_L2CacheInvalidateLine(VXPS_L2CC_BASEADDR);
 		//Xil_DCacheInvalidateRange((u32)RxPacket, MAX_PKT_LEN / 100, VXPS_L2CC_BASEADDR);
+		XAxiDma_WriteReg(VREG_BASE_ADDR, 4, MAX_PKT_LEN/4);
 		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 1);
-		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
-		do_gettimeofday(&g_start);
-		unsigned long diff;
-		diff = 1000000 * (g_start.tv_sec-g_start_0.tv_sec)+ g_start.tv_usec-g_start_0.tv_usec;
-        printk("dmako just configDMA time (T3/us) %ld\n",diff);
+		testFunc();
 		return XST_SUCCESS;
 	}
 	else if (cmd == REG_SET_PARA)
@@ -223,21 +230,32 @@ int xil_DmaInit(u16 DeviceId)
 
 	/* Initialize the XAxiDma device.
 	 */
+	printk("xil_DmaInit 0 \r\n");
 	CfgPtr = XAxiDma_LookupConfig(DeviceId);
 	if (!CfgPtr) {
 		return XST_FAILURE;
 	}
+	else
+	{
+		CfgPtr->BaseAddr = XPAR_AXI_DMA_0_VBASEADDR;
+	}
+	printk("xil_DmaInit 1 \r\n");
 
-	Status = XAxiDma_CfgInitialize(&AxiDma, CfgPtr, XPAR_AXI_DMA_0_VBASEADDR);
+	Status = XAxiDma_CfgInitialize(&AxiDma, CfgPtr);
+	printk("xil_DmaInit 3 \r\n");
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
+	printk("xil_DmaInit 4 \r\n");
 	if(XAxiDma_HasSg(&AxiDma)){
 		//xil_printf("Device configured as SG mode \r\n");
 		return XST_FAILURE;
 	}
+	printk("xil_DmaInit 5 \r\n");
 	XAxiDma_IntrDisable(&AxiDma, XAXIDMA_IRQ_ALL_MASK, XAXIDMA_DEVICE_TO_DMA);
-	Xil_L2CacheDisable(VXPS_L2CC_BASEADDR);
+	printk("xil_DmaInit 6 \r\n");
+	My_Xil_L2CacheDisable(VXPS_L2CC_BASEADDR);
+	printk("xil_DmaInit 7 \r\n");
 	return XST_SUCCESS;
 }
 int CheckData(void)
@@ -250,7 +268,7 @@ int CheckData(void)
 	/* Invalidate the DestBuffer before receiving the data, in case the
 	 * Data Cache is enabled
 	 */
-	Xil_DCacheInvalidateRange((u32)RxPacket, MAX_PKT_LEN, VXPS_L2CC_BASEADDR);
+	Xil_DCacheInvalidateRange((u32)RxPacket, MAX_PKT_LEN);
 
 	printk("Data received: ");
 	for(Index = 0; Index < 8; Index++) {

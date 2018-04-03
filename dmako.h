@@ -4,7 +4,10 @@
 #include <linux/ioctl.h>
 #include <linux/slab.h>
 #include "head.h"
-#include "myDma.h"
+//#include "myDma.h"
+#include "xaxidma.h"
+#include "xparameters.h"
+#include "xil_cache_l.h"
 /*Macros to help debuging*/
 #undef PDEBUG
 #ifdef DEMO_DEBUG
@@ -25,6 +28,7 @@ struct demo_dev {
 	struct cdev cdev;
 };
 
+void testFunc(void);
 int demo_release(struct inode *inode, struct file *filp);
 int demo_open(struct inode *inode, struct file *filp);
 ssize_t demo_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
@@ -34,6 +38,5 @@ int demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 int xil_DmaInit(u16);
 int CheckData(void);
 int demo_mmap (struct file *filp, struct vm_area_struct *vma);
-
 unsigned int comFunc(unsigned int hi, unsigned int mid, unsigned int lo);//1 2 3-> 0x1203
 #endif

@@ -1,21 +1,25 @@
-CROSS_COMPLE:=arm-xilinx-linux-gnueabi-
-ARCH:=arm
-CC:=$(CROSS_COMPILE)gcc
-LD:=$(CROSS_COMPILE)ld
 
+MYOBJ = xaxidma.o xaxidma_bd.o xaxidma_bdring.o xbasic_types.o xil_assert.o xil_cache.o xil_io.o
+dma: $(MYOBJ)
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -o dma.o $(MYOBJ) 
 
-obj-m := dmako.o
-module-objs := dmako.o 
+xaxidma.o: xaxidma.c xaxidma.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xaxidma.c
 
-KVER ?= $(shell uname -r)
-#KDIR := /lib/modules/$(KVER)/build
+xaxidma_bd.o: xaxidma_bd.c xaxidma_bd.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xaxidma_bd.c
 
-#KDIR := /root/eastcom/susz_view_server_test/SW_COMM/lib/SW_BPS/Terminal/D8135/CPU/LinuxSys/Kernel
-KDIR := ~/Zynq/ZynqTool/Kernel/linux-xlnx
-PWD := $(shell pwd)
-defaule:
-	make -C $(KDIR) M=$(PWD) modules ARCH=arm
+xaxidma_bdring.o: xaxidma_bdring.c xaxidma_bdring.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xaxidma_bdring.c
 
+xbasic_types.o: xbasic_types.c xbasic_types.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xbasic_types.c
 
-clean:
-	rm -f *.ko *.o *.mod.c *.symvers
+xil_assert.o: xil_assert.c xil_assert.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xil_assert.c
+
+xil_cache.o: xil_cache.c xil_cache.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xil_cache.c
+
+xil_io.o: xil_io.c xil_io.h
+	arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -c xil_io.c

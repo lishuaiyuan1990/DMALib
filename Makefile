@@ -2,6 +2,7 @@ ifeq ($(KERNELRELEASE),)
 KERNELDIR ?= ~/Desktop/Zynq/ZynqTool/Kernel/linux-xlnx
 PWD := $(shell pwd) 
 CROSS_COMPILER := arm-xilinx-linux-gnueabi-
+#CROSS_COMPILER := arm-linux-gnueabi-
 modules:
 		$(MAKE) -C $(KERNELDIR) ARCH=arm CROSS_COMPILE=arm-xilinx-linux-gnueabi- M=$(PWD) modules
 modules_install:
@@ -18,7 +19,10 @@ else
 #obj-m := pns610.o
 
 MODULE_NAME := mydmako
-DMA_OBJS := myDma.o dmako.o
+#DMA_OBJS := myDma.o dmako.o
+
+DMA_OBJS := xbasic_types.o xil_assert.o xil_cache.o xil_io.o xaxidma_bd.o xaxidma_bdring.o xaxidma.o dmako.o
+
 $(MODULE_NAME)-objs:= $(DMA_OBJS)
 obj-m := mydmako.o
 
