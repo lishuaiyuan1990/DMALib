@@ -34,5 +34,6 @@ int demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 int xil_DmaInit(u16);
 int CheckData(void);
 int demo_mmap (struct file *filp, struct vm_area_struct *vma);
+
 unsigned int comFunc(unsigned int hi, unsigned int mid, unsigned int lo);//1 2 3-> 0x1203
 #endif

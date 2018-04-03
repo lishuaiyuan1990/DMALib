@@ -18,6 +18,9 @@
 #include <linux/mm.h> 
 #include <linux/fcntl.h> 
 #include <linux/mman.h>
+
+#include <linux/time.h>  
+
 #include <linux/stat.h>
 #include "dmako.h"
 
@@ -35,6 +38,11 @@
 #define REG_BASE_PADDR 0x43C00000
 MODULE_AUTHOR("Li");
 MODULE_LICENSE("GPL");
+
+
+struct  timeval g_start;
+struct  timeval g_end;
+struct  timeval g_start_0;
 
 struct demo_dev *demo_devices;
 static unsigned char demo_inc = 0;//全局变量，每次只能打开一个设备
@@ -71,7 +79,11 @@ ssize_t demo_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 	//printk("dmako...... read XAxiDma_Busy %d\n", ret);
 	if (ret == 0)
 	{
-		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
+		do_gettimeofday(&g_end);
+		unsigned long diff;
+		diff = 1000000 * (g_end.tv_sec-g_start.tv_sec)+ g_end.tv_usec-g_start.tv_usec;
+        printk("dmako not busy from configSimple time(us) %ld\n",diff);
+		// XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
 	}
 	return ret;
 }
@@ -86,16 +98,35 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	unsigned int para;
 	int Status;
 	static int first_time_run = 1;
-	//printk("dmako......ioctl cmd: %0#8x arg: %0#8x \n", cmd, arg);
+	printk("dmako......ioctl cmd: %0#8x arg: %0#8x \n", cmd, arg);
 	u16 data = cmd & 0x0000FFFF;
 	u8 nr = data & 0x00FF;
 	u8 nr_lo = nr & 0x0F;
 	u8 nr_hi = (nr & 0xF0) >> 4;
 	u8 magic = (data & 0xFF00) >> 8; 
 	if (cmd == CONFIG_PARA_DMA)
-	{
+	{		
+		do_gettimeofday(&g_start_0);
 		u8 *RxBufferPtr;
 		//printk("dmako xxxxxxxxxxxxxxxxxxxxxx ioctl CONFIG_PARA_DMA : %d\n", arg);
+		if (arg == 2)
+		{
+			printk("dmako configDMA XAxiDma_Reset...");
+			XAxiDma_Reset(&AxiDma);
+			/* At the initialization time, hardware should finish reset quickly
+			 */
+			int TimeOut = 500;
+			while (TimeOut) {
+				if(XAxiDma_ResetIsDone(&AxiDma)) {
+					break;
+				}
+				TimeOut -= 1;
+			}
+			if (!TimeOut)
+				return XST_FAILURE;
+			printk("dmako configDMA XAxiDma_Reset Success...");
+			arg = 0;
+		}
 		arg == 0 ? (RxBufferPtr = (u8 *)RX_BUFFER_BASE) : (RxBufferPtr = (u8 *)RX_BUFFER_BASE_2);
 		Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBufferPtr, MAX_PKT_LEN, XAXIDMA_DEVICE_TO_DMA,VREG_BASE_ADDR);
 		if (Status != XST_SUCCESS) {
@@ -113,6 +144,11 @@ int  demo_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		//Xil_L2CacheInvalidateLine(VXPS_L2CC_BASEADDR);
 		//Xil_DCacheInvalidateRange((u32)RxPacket, MAX_PKT_LEN / 100, VXPS_L2CC_BASEADDR);
 		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 1);
+		XAxiDma_WriteReg(VREG_BASE_ADDR, 0, 0);
+		do_gettimeofday(&g_start);
+		unsigned long diff;
+		diff = 1000000 * (g_start.tv_sec-g_start_0.tv_sec)+ g_start.tv_usec-g_start_0.tv_usec;
+        printk("dmako just configDMA time (T3/us) %ld\n",diff);
 		return XST_SUCCESS;
 	}
 	else if (cmd == REG_SET_PARA)

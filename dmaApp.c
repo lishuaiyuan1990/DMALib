@@ -7,6 +7,7 @@
 #include "head.h"
 #include <sys/ioctl.h>
 #include <sys/select.h>
+
 #define MAX_LINKEDNUM 10
 unsigned int* gdata;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -21,6 +22,10 @@ int codermark = 0;
 int gatestart = 0;
 int gateend = 500;
 int endsign = 0xEEEE;
+
+struct  timeval g_start;
+struct  timeval g_end;
+
 volatile int mark = 1;
 
 int recvtimes = 0;
@@ -51,7 +56,7 @@ struct DMAPara openDMA()
 		perror("open dma error\n");
 		exit(-1);
 	}
-	printf("open dama successfully\n");
+	printf("dmaApp open dama successfully\n");
 	pdata = (int*)mmap(0, MAX_PKT_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, fd, RX_BUFFER_BASE); 
 	pdata_2 = (int*)mmap(0, MAX_PKT_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, fd, RX_BUFFER_BASE_2); 
 	para.fd = fd;
@@ -137,7 +142,7 @@ void sockFunc(int fd, int* pdata[])
 				setsockopt(cnt_sock, IPPROTO_TCP, TCP_NODELAY,(char*)&opt, sizeof(int));
 				//int send_buffer = 1024 * 1024 * 100;
 				//setsockopt(cnt_sock, SOL_SOCKET, SO_SNDBUF, (const char*)(&send_buffer), sizeof(int));
-				printf("recv from IP(%s) PORT(%d)\n", inet_ntoa(cnt_addr.sin_addr), cnt_addr.sin_port);
+				printf("dmaApp recv from IP(%s) PORT(%d)\n", inet_ntoa(cnt_addr.sin_addr), cnt_addr.sin_port);
 				for (int i = 0; i < MAX_LINKEDNUM; i++)
 				{
 					if (fd_accept[i] == 0)
@@ -151,10 +156,10 @@ void sockFunc(int fd, int* pdata[])
 	}
 	printf("break while\n");
 	for (int i = 0; i < MAX_LINKEDNUM; i++)
-        {
+    {
   		if (fd_accept[i] != 0)
 			close(fd_accept[i]);
-        }
+    }
 }
 void readCtlMsg(int index, int fd, int *pdata[])
 {
@@ -206,6 +211,7 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 		td_para.para.pdata[0] = pdata[0];
 		td_para.para.pdata[1] = pdata[1];
 		td_para.index = index;
+		ioctl(fd, CONFIG_PARA_DMA, 2);//0
 		if (pthread_create(&pthread_id, NULL, startDMA, &td_para) !=0)
 		{
 			printf("Create Thread Failed\n");
@@ -222,7 +228,7 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 	{
 		if (lo == 0)
 		{
-			printf("stop sys ....... \n");
+			printf("dmaApp stop sys ....... \n");
 			int data[4];
 			sys_start = 0;
 			while(read(fd, data, 10));
@@ -230,18 +236,19 @@ void controlFunc(const int index, int sign, int fd, int *pdata[])
 		else if (lo == 1)
 		{
 			sys_start = 1;
-			printf("start sys ....... \n");
+			printf("dmaApp start sys ....... \n");
 		}
 		ioctl(fd, REG_SET_PARA, sign);
 		return;
 	}
 	if (hi8 == INIT_CMD)
-		ioctl(fd, CONFIG_PARA_DMA);
+		ioctl(fd, CONFIG_PARA_DMA, 0);
 	else
 		ioctl(fd, REG_SET_PARA, sign);
 }
 void *transData(void *args)
 {
+	gettimeofday(&g_start, NULL);
 	int len = gateend - gatestart;
 	int index = *((int*)args);
 	fd_set set;
@@ -266,27 +273,34 @@ void *transData(void *args)
 		int res = select(fd_accept[index] + 1, &set, &set, NULL, &timeout);
 		if (res < 0)
 		{
-			printf("select error\n");
+			printf("dmaApp select error\n");
 			break;
 		}
 		else if (res == 0)
 		{
-			printf("write time out\n");
+			printf("dmaApp write time out\n");
 			break;
 		}
 		if (fd_accept[index] == 0)
 			break;
 		mark = 0;
 		ret_write = ret_write + write(fd_accept[index], gdata + ret_write / 4,  MAX_PKT_LEN - ret_write);
+
+
+		printf("dmaApp transData length %d\n", ret_write);
 		if (ret_write < 0)
 		{
 			mark = 1;
-			printf("errno: %d\n", errno);
+			printf("dmaApp errno: %d\n", errno);
 			break;
 		}
 		while (!mark&& fd_accept[index] != 0);
 	}
 
+	gettimeofday(&g_end, NULL);
+	unsigned long diff;
+	diff = 1000000 * (g_end.tv_sec-g_start.tv_sec)+ g_end.tv_usec-g_start.tv_usec;
+    printf("dmaApp transData time (T4/us) %ld\n",diff);
 	recvtimes += 1;
 	//printf("recvtimes %d\n", recvtimes);
 	pthread_exit(NULL);
@@ -306,13 +320,13 @@ void *startDMA(void *args)
 	int data[4];
 	int j = 0;
 	int clock = 0;
-	ioctl(fd, CONFIG_PARA_DMA, 0);//0
-	//printf("config_para_DMA 1 %d\n", clock);
+	printf("dmaApp config_para_DMA 1 %d\n", clock);
 	while(read(fd, data, 10)); 
 	while (!sys_start);
 	static int first = 1;
 	while(sys_start && fd_accept[index] != 0)
 	{
+		printf("dmaApp sys_start: %d dmaBusy: %d \n", sys_start, read(fd, data, 10));
 		while (sys_start && read(fd, data, 10)&& fd_accept[index] != 0); 
 		if (first != 1)
 			pthread_join(transpthread_id[0], NULL);//waiting 0
@@ -322,31 +336,32 @@ void *startDMA(void *args)
 			break;
 		clock = (clock + 1) % 2;//1
 		ioctl(fd, CONFIG_PARA_DMA, clock);
-		//printf("config_para_DMA 2 %d\n", clock);
+		printf("dmaApp config_para_DMA 2 %d\n", clock);
 		clock = (clock + 1) % 2;//0
 
 		memcpy(gdata, pdata[clock], MAX_PKT_LEN);
-		//printf("config_para_DMA memcpy %d\n", clock);
+		printf("dmaApp config_para_DMA memcpy %d\n", clock);
 		if (pthread_create(&transpthread_id[1],NULL, transData, (void*)(&index)))//create 1
 		{
-			printf("Create Thread Failed\n");
+			//printf("dmaApp Create Thread Failed\n");
 		}
+		printf("dmaApp sys_start: %d dmaBusy: %d\n", sys_start, read(fd, data, 10));
 		while (sys_start && read(fd, data, 10)&& fd_accept[index] != 0); 
 		pthread_join(transpthread_id[1], NULL);//waiting 1
 		if (!sys_start)
 			break;
 		ioctl(fd, CONFIG_PARA_DMA, clock);
-		//printf("config_para_DMA 2 %d\n", clock);
+		printf("dmaApp config_para_DMA 2 %d\n", clock);
 		clock = (clock + 1) % 2;//1
 		memcpy(gdata, pdata[clock], MAX_PKT_LEN);
-		//printf("config_para_DMA memcpy %d\n", clock);
+		printf("dmaApp config_para_DMA memcpy %d\n", clock);
 		pthread_create(&transpthread_id[0], NULL,transData, (void*)(&index));//create 0*/
 		clock = (clock + 1) % 2;//0
 		if (fd_accept[index] == 0)
 			break;
 	}
-	printf("disconnected ...\n");
+	printf("dmaApp disconnected ...\n");
 	pthread_mutex_unlock(&mutex);
-	printf("unlock...\n");
+	printf("dmaApp unlock...\n");
 	pthread_exit((void*)0);
 }

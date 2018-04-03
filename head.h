@@ -4,7 +4,7 @@
 #define REG_SET_PARA				_IO(TEST_MAGIC, 1)
 #define SYS_START_MAGIC      _IO(TEST_MAGIC, 2)
 
-#define INIT_CMD	 0x03
+#define INIT_CMD	 0x31
 #define OPEN_CMD 	 0x04
 #define TRIGGER_MODE 0x05
 #define PRF_SET 	 0x06
@@ -19,4 +19,4 @@
 #define GAIN_SWITCH  0x0F
 #define REC_CHANNEL  0x10
 #define READ_DATA	 0x21
-#define MAX_PKT_LEN (50000)
+#define MAX_PKT_LEN (524288) //512 * 1024 524288  64 * 1024 65536 1024 * 1024 1048576

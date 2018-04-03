@@ -1,5 +1,5 @@
 ifeq ($(KERNELRELEASE),)   
-KERNELDIR ?= ~/Zynq/ZynqTool/Kernel/linux-xlnx
+KERNELDIR ?= ~/Desktop/Zynq/ZynqTool/Kernel/linux-xlnx
 PWD := $(shell pwd) 
 CROSS_COMPILER := arm-xilinx-linux-gnueabi-
 modules:

@@ -303,7 +303,7 @@ int XAxiDma_SimpleTransfer(XAxiDma *InstancePtr, u32 BuffAddr, u32 Length, int D
 		}
 
 		//XAxiDma_WriteReg(0x43C00000,4,Length/4);
-		XAxiDma_WriteReg(vaddr, 4, Length/4);
+		XAxiDma_WriteReg(vaddr, 4, Length/2);
 	}
 
 	XAxiDma_WriteReg(InstancePtr->RxBdRing[RingIndex].ChanBase, XAXIDMA_DESTADDR_OFFSET, BuffAddr);
